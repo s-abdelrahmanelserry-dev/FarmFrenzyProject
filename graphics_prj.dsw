@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Microsoft Developer Studio Workspace File, Format Version 6.00
 # WARNING: DO NOT EDIT OR DELETE THIS WORKSPACE FILE!
 
@@ -27,3 +28,34 @@ Package=<3>
 
 ###############################################################################
 
+=======
+Microsoft Developer Studio Workspace File, Format Version 6.00
+# WARNING: DO NOT EDIT OR DELETE THIS WORKSPACE FILE!
+
+###############################################################################
+
+Project: "graphics_prj"=".\graphics_prj.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Global:
+
+Package=<5>
+{{{
+}}}
+
+Package=<3>
+{{{
+}}}
+
+###############################################################################
+
+>>>>>>> aa47395548bcb519c7ea99beb9f79bcf1da6bb76
