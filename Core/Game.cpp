@@ -2,41 +2,36 @@
 #include "../Config/GameConfig.h"
 #include "../UI/StatusBar.h"
 
-// Inside your Game::Update or Game::Draw function:
-pStatusBar->Draw(pWind, currentTimer, currentGoal, currentLevel, animalList.size());
 Game::Game()
-pStatusBar = new StatusBar(); // Create the object in memory
 {
-	//1 - Create the main window
+	// 1 - Create the main window
 	pWind = CreateWind(config.windWidth, config.windHeight, config.wx, config.wy);
 
-	//2 - create and draw the toolbar
+	// 2 - Initialize UI components
+	pStatusBar = new StatusBar(); // Task 1: Create the object in memory
 	createToolbar();
 	createBudgetbar();
-	//3 - create and draw the backgroundPlayingArea
 
+	// 3 - Initialize Game State (Example values)
+	currentTimer = 120; 
+	currentGoal = 5;
+	currentLevel = 1;
 
-	//4- Create the Plane
-	//TODO: Add code to create and draw the Plane
-
-	//5- Create the Bullet
-	//TODO: Add code to create and draw the Bullet
-
-	//6- Create the enemies
-	//TODO: Add code to create and draw enemies in random places
-
-	//7- Create and clear the status bar
+	// 4 - Create and clear the status bar area
 	clearStatusBar();
 }
 
 Game::~Game()
 {
+	delete pStatusBar;
+	delete gameToolbar;
+	delete gameBudgetbar;
+	delete pWind;
 }
 
 clicktype Game::getMouseClick(int& x, int& y) const
 {
-	return pWind->WaitMouseClick(x, y);	//Wait for mouse click
-
+	return pWind->WaitMouseClick(x, y); // Wait for mouse click
 }
 
 string Game::getSrting() const
@@ -48,17 +43,14 @@ string Game::getSrting() const
 	while (1)
 	{
 		ktype = pWind->WaitKeyPress(Key);
-		if (ktype == ESCAPE)	//ESCAPE key is pressed
-			return "";	//returns nothing as user has cancelled label
-		if (Key == 13)	//ENTER key is pressed
-			return Label;
-		if (Key == 8)	//BackSpace is pressed
-			if (Label.size() > 0)
-				Label.resize(Label.size() - 1);
-			else
-				Key = '\0';
-		else
-			Label += Key;
+		if (ktype == ESCAPE) return ""; 
+		if (Key == 13) return Label;
+		if (Key == 8)
+		{
+			if (Label.size() > 0) Label.resize(Label.size() - 1);
+			else Key = '\0';
+		}
+		else Label += Key;
 		printMessage(Label);
 	}
 }
@@ -74,46 +66,35 @@ window* Game::CreateWind(int w, int h, int x, int y) const
 
 void Game::createToolbar() 
 {
-	point toolbarUpperleft;
-	toolbarUpperleft.x = 0;
-	toolbarUpperleft.y = 0;
-
+	point toolbarUpperleft = {0, 0};
 	gameToolbar = new Toolbar(this, toolbarUpperleft, 0, config.toolBarHeight);
 	gameToolbar->draw();
 }
 
 void Game::createBudgetbar()
 {
-	point budgetbarUpperleft;
-	budgetbarUpperleft.x = 0;
-	budgetbarUpperleft.y = config.toolBarHeight;
-
+	point budgetbarUpperleft = {0, config.toolBarHeight};
 	gameBudgetbar = new Budgetbar(this, budgetbarUpperleft, 0, config.toolBarHeight);
 	gameBudgetbar->draw();
 }
 
-
 void Game::clearBudget() const
 {
-	//Clear Status bar by drawing a filled rectangle
 	pWind->SetPen(config.bkGrndColor, 1);
 	pWind->SetBrush(config.bkGrndColor);
-	pWind->DrawRectangle(config.windWidth - 500, config.toolBarHeight, config.windWidth, 2*config.toolBarHeight);
+	pWind->DrawRectangle(config.windWidth - 500, config.toolBarHeight, config.windWidth, 2 * config.toolBarHeight);
 }
 
 void Game::printBudget(string msg) const
 {
-	clearBudget();	//First clear the status bar
-
+	clearBudget();
 	pWind->SetPen(config.penColor, 50);
 	pWind->SetFont(24, BOLD, BY_NAME, "Arial");
-	pWind->DrawString(config.windWidth-200, config.toolBarHeight + 10, msg);
-
+	pWind->DrawString(config.windWidth - 200, config.toolBarHeight + 10, msg);
 }
 
 void Game::clearStatusBar() const
 {
-	//Clear Status bar by drawing a filled rectangle
 	pWind->SetPen(config.statusBarColor, 1);
 	pWind->SetBrush(config.statusBarColor);
 	pWind->DrawRectangle(0, config.windHeight - config.statusBarHeight, config.windWidth, config.windHeight);
@@ -121,12 +102,10 @@ void Game::clearStatusBar() const
 
 void Game::printMessage(string msg) const
 {
-	clearStatusBar();	//First clear the status bar
-
+	clearStatusBar();
 	pWind->SetPen(config.penColor, 50);
 	pWind->SetFont(24, BOLD, BY_NAME, "Arial");
 	pWind->DrawString(10, config.windHeight - (int)(0.85 * config.statusBarHeight), msg);
-
 }
 
 window* Game::getWind() const
@@ -134,36 +113,32 @@ window* Game::getWind() const
 	return pWind;
 }
 
-void Game::go() const
+void Game::go()
 {
-	//This function reads the position where the user clicks to determine the desired operation
 	int x, y;
 	bool isExit = false;
 
-	//Change the title
 	pWind->ChangeTitle("- - - - - - - - - - Farm Frenzy (CIE101-project) - - - - - - - - - -");
 
 	do
 	{
-		printMessage("Ready...");
+		// --- TASK 1: DRAW STATUS BAR ---
+		// We pass the live data to the Draw function here
+		pStatusBar->Draw(pWind, currentTimer, currentGoal, currentLevel, animalList.size());
+
 		string budget_string = "BUDGET = $" + to_string(budget);
 		printBudget(budget_string);
-		//printBudget("BUDGET = $1000");
-		getMouseClick(x, y);	//Get the coordinates of the user click
-		//if (gameMode == MODE_DSIGN)		//Game is in the Desgin mode
-		//{
-			//[1] If user clicks on the Toolbar
+
+		getMouseClick(x, y); 
+
 		if (y >= 0 && y < config.toolBarHeight)
 		{
 			isExit = gameToolbar->handleClick(x, y);
 		}
-		else if (y >= config.toolBarHeight && y < 2*config.toolBarHeight)
+		else if (y >= config.toolBarHeight && y < 2 * config.toolBarHeight)
 		{
 			isExit = gameBudgetbar->handleClick(x, y);
 		}
-		//}
 
 	} while (!isExit);
 }
-
-
