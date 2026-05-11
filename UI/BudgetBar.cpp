@@ -1,9 +1,11 @@
 #include "Budgetbar.h"
 #include "../Config/GameConfig.h"
 #include "../Core/Game.h"
+#include "../Entities/Animal.h" // Ensure this is included to recognize Chick/Animal classes
 #include <iostream>
-using namespace std;
+#include <random> // For mt19937
 
+using namespace std;
 
 BudgetbarIcon::BudgetbarIcon(Game* r_pGame, point r_point, int r_width, int r_height, string img_path) : Drawable(r_pGame, r_point, r_width, r_height)
 {
@@ -12,75 +14,60 @@ BudgetbarIcon::BudgetbarIcon(Game* r_pGame, point r_point, int r_width, int r_he
 
 void BudgetbarIcon::draw() const
 {
-	//draw image of this object
 	window* pWind = pGame->getWind();
 	pWind->DrawImage(image_path, RefPoint.x, RefPoint.y, width, height);
 }
 
 ChickIcon::ChickIcon(Game* r_pGame, point r_point, int r_width, int r_height, string img_path) : BudgetbarIcon(r_pGame, r_point, r_width, r_height, img_path)
 {
-	chickList = new Chick * [15];
-	for (int i = 0; i < 10; i++) {
-		chickList[i] = nullptr;
-	}
+    // Initialize count for tracking chicks locally if needed
+    count = 0; 
 }
 
 void ChickIcon::onClick()
 {
-	//TO DO: add code for cleanup and game exit here
-	/*
-	//draw image of this object in the field
-	window* pWind = pGame->getWind();
-	pWind->DrawImage(image_path, RefPoint.x, RefPoint.y, width, height);
-	*/
-	
-	//Chick* new_chick = new Chick(pGame, RefPoint, 30, 30, "images\\Chick.png");
-	// Inside ChickIcon::onClick() in BudgetBar.cpp
-Chick* new_chick = new Chick(pGame, RefPoint, 30, 30, "images\\Chick.png");
-pGame->addAnimal(new_chick); // Create this helper function in Game.cpp to push to animalList
 	cout << "Icon Chick Clicked" << endl;
-	if (pGame->budget > 100) {
+
+	// Check if player has enough budget (Chick costs 100)
+	if (pGame->budget >= 100) {
 		pGame->budget = pGame->budget - 100;
+		
+		// Update the Budget display on screen
 		pGame->clearBudget();
 		string budget_string = "BUDGET = $" + to_string(pGame->budget);
 		pGame->printBudget(budget_string);
 
+		// --- TASK 15: SPAWN CHICK AT RANDOM POSITION ---
 		point p;
-		// 1. Obtain a seed from a non-deterministic source (if available)
-		std::random_device rd1;
+		std::random_device rd;
+		std::mt19937 gen(rd());
+		
+		// Define spawn range within the field boundaries
+		// Min Y should be below the toolbars (2 * toolbarHeight)
+		// Max Y should be above the status bar
+		std::uniform_int_distribution<int> distX(50, config.windWidth - 50);
+		std::uniform_int_distribution<int> distY(config.toolBarHeight * 2 + 20, config.windHeight - config.statusBarHeight - 70);
 
-		// 2. Seed the Mersenne Twister engine
-		// std::mt19937 is a high-quality pseudo-random number generator
-		std::mt19937 gen1(rd1());
-		std::uniform_int_distribution<int> dist1(range_min_x, range_max_x);
-		p.x = dist1(gen1);
-		//std::cout << "P.X = " << p.x << endl;
-		// 1. Obtain a seed from a non-deterministic source (if available)
-		std::random_device rd2;
+		p.x = distX(gen);
+		p.y = distY(gen);
 
-		// 2. Seed the Mersenne Twister engine
-		// std::mt19937 is a high-quality pseudo-random number generator
-		std::mt19937 gen2(rd2());
-		std::uniform_int_distribution<int> dist2(range_min_y, range_max_y);
-		p.y = dist2(gen2);
-		//std::cout << "P.Y = " << p.y << endl;
-		//p.x = 300;
-		//p.y = 300;
-		chickList[count]= new Chick(pGame, p, 50, 50, image_path);
-		chickList[count]->draw();
-		count++;
-		//window* pWind = pGame->getWind();
-		//pWind->DrawImage(image_path, RefPoint.x, RefPoint.y, width, height);
+		// Create the new Chick object
+		// We use a size of 50x50 as per your startup code
+		Animal* new_chick = new Animal(pGame, p, 50, 50, "images\\chick.jpg");
+		
+		// IMPORTANT: Add the chick to the Game's master list
+		// This allows the Game::go() loop to move and draw it automatically
+		pGame->addAnimal(new_chick); 
+		
+		cout << "New Chick added to game at (" << p.x << "," << p.y << ")" << endl;
+	}
+	else {
+		pGame->printMessage("Not enough budget!");
 	}
 }
 
-
-
-
 Budgetbar::Budgetbar(Game* r_pGame, point r_point, int r_width, int r_height) : Drawable(r_pGame, r_point, r_width, r_height)
 {
-	//First prepare List of images for each icon
-	//To control the order of these images in the menu, reoder them in enum ICONS above	
 	iconsImages[ICON_CHICK] = "images\\chick.jpg";
 
 	point p;
@@ -89,45 +76,34 @@ Budgetbar::Budgetbar(Game* r_pGame, point r_point, int r_width, int r_height) : 
 
 	iconsList = new BudgetbarIcon * [ANIMAL_COUNT];
 
-	//For each icon in the tool bar create an object 
 	iconsList[ICON_CHICK] = new ChickIcon(pGame, p, config.iconWidth, config.toolBarHeight, iconsImages[ICON_CHICK]);
-	p.x += config.iconWidth;
-	//p.x += config.iconWidth;
-	//iconsList[ICON_CHICK] = new ChickIcon(pGame, p, config.iconWidth, config.toolBarHeight, iconsImages[ICON_CHICK]);
 }
 
 Budgetbar::~Budgetbar()
 {
-	for (int i = 0; i < ICON_COUNT; i++)
+	for (int i = 0; i < ANIMAL_COUNT; i++)
 		delete iconsList[i];
-	delete iconsList;
+	delete[] iconsList;
 }
 
 void Budgetbar::draw() const
 {
 	for (int i = 0; i < ANIMAL_COUNT; i++)
 		iconsList[i]->draw();
+		
 	window* pWind = pGame->getWind();
 	pWind->SetPen(BLACK, 3);
-	pWind->DrawLine(0, 2*config.toolBarHeight, pWind->GetWidth(), 2*config.toolBarHeight);
+	// Draw a separator line between BudgetBar and the Playing Field
+	pWind->DrawLine(0, 2 * config.toolBarHeight, pWind->GetWidth(), 2 * config.toolBarHeight);
 }
 
 bool Budgetbar::handleClick(int x, int y)
 {
-	if (x > ANIMAL_COUNT * config.iconWidth)	//click outside toolbar boundaries
+	if (x > ANIMAL_COUNT * config.iconWidth)
 		return false;
 
-
-	//Check whick icon was clicked
-	//==> This assumes that menu icons are lined up horizontally <==
-	//Divide x co-ord of the point clicked by the icon width (int division)
-	//if division result is 0 ==> first icon is clicked, if 1 ==> 2nd icon and so on
-
 	int clickedIconIndex = (x / config.iconWidth);
-	iconsList[clickedIconIndex]->onClick();	//execute onClick action of clicled icon
-
-	//if (clickedIconIndex == ICON_EXIT) return true;
+	iconsList[clickedIconIndex]->onClick();
 
 	return false;
-
 }
