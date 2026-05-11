@@ -6,9 +6,6 @@
 #include "../UI/StatusBar.h"
 #include "../Entities/Animal.h" 
 
-// Forward declaration of Wolf if needed
-class Wolf; 
-
 class Game
 {
 private:
@@ -17,14 +14,14 @@ private:
 	Budgetbar* gameBudgetbar;
     StatusBar* pStatusBar;
 
-    std::vector<Animal*> animalList;
-    std::vector<Animal*> wolfList; // Task 16: List for wolves
+    std::vector<Animal*> animalList; // For player-owned animals
+    std::vector<Animal*> wolfList;   // Task 16: For enemy wolves
 
-    // Game state
-    int currentTimer; // In seconds or frames
+    // Game state variables
+    int currentTimer;
     int currentGoal;
     int currentLevel;
-    int wolfSpawnInterval; // How often a wolf appears
+    int wolfSpawnTimer; // Counter to track when to spawn a wolf
 
 public:
 	int budget = 2000;
@@ -42,9 +39,9 @@ public:
 	void clearStatusBar() const;
 	void printMessage(string msg) const;
 
-	void go(); 
+	void go(); // Task 17: Update loop for movement
     void addAnimal(Animal* pAn) { animalList.push_back(pAn); }
-    void spawnWolf(); // Task 16: Logic to create a random wolf
+    void spawnWolf(); // Task 16: Random wolf generation
 
 	window* getWind() const;
 };
