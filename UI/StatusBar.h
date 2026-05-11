@@ -3,6 +3,6 @@
 
 class StatusBar {
 public:
-    // Pass the window and the game data here
+    // Draws the bar background and the four required game stats
     void Draw(window* pWind, int timer, int goal, int level, int animals);
 };
