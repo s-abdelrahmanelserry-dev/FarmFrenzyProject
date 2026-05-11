@@ -1,78 +1,81 @@
 #include "Game.h"
 #include "../Config/GameConfig.h"
-#include "../UI/StatusBar.h"
 #include <ctime>
 
 Game::Game()
 {
-    srand(time(0)); // Seed randomness for animal movement
+    srand(time(0)); 
 	pWind = CreateWind(config.windWidth, config.windHeight, config.wx, config.wy);
 
 	pStatusBar = new StatusBar();
 	currentTimer = 120;
 	currentGoal = 10;
 	currentLevel = 1;
+    wolfSpawnInterval = 500; // Example: Spawn every 500 frames
 
 	createToolbar();
 	createBudgetbar();
 	clearStatusBar();
 }
 
-Game::~Game()
+void Game::spawnWolf()
 {
-	delete pStatusBar;
-    for(auto a : animalList) delete a;
-	delete gameToolbar;
-	delete gameBudgetbar;
-	delete pWind;
-}
+    // Task 16: Generate random wolf based on level
+    point p;
+    p.x = rand() % (config.windWidth - 50);
+    p.y = (config.toolBarHeight * 2) + (rand() % 300);
 
-// ... (getMouseClick and other helper functions remain the same) ...
+    // Using Animal class with a wolf image for simplicity, 
+    // or a specialized Wolf class if you have one.
+    Animal* pWolf = new Animal(this, p, 60, 60, "images\\Wolf.png");
+    wolfList.push_back(pWolf);
+    printMessage("A Wolf has appeared!");
+}
 
 void Game::go()
 {
 	int x, y;
 	bool isExit = false;
-
-	pWind->ChangeTitle("- - - - - - - - - - Farm Frenzy (CIE101-project) - - - - - - - - - -");
+    int frameCounter = 0;
 
 	do
 	{
-        // --- TASK 15: UPDATE ANIMALS ---
+        frameCounter++;
+
+        // --- TASK 16: RANDOM WOLF SPAWNING ---
+        if (frameCounter % wolfSpawnInterval == 0) {
+            spawnWolf();
+        }
+
+        // --- TASK 15 & 17: RANDOM MOVEMENT ---
         for (Animal* pAn : animalList) {
             pAn->moveRandomly(config.windWidth, config.windHeight, config.toolBarHeight, config.statusBarHeight);
         }
+        for (Animal* pWolf : wolfList) {
+            pWolf->moveRandomly(config.windWidth, config.windHeight, config.toolBarHeight, config.statusBarHeight);
+        }
 
         // --- DRAWING ---
-        // 1. Clear playing area (Between BudgetBar and StatusBar)
         pWind->SetBrush(config.bkGrndColor);
         pWind->SetPen(config.bkGrndColor);
         pWind->DrawRectangle(0, 2 * config.toolBarHeight, config.windWidth, config.windHeight - config.statusBarHeight);
 
-        // 2. Draw Animals
-        for (Animal* pAn : animalList) {
-            pAn->draw();
-        }
+        for (Animal* pAn : animalList) pAn->draw();
+        for (Animal* pWolf : wolfList) pWolf->draw();
 
-        // 3. Draw UI
 		pStatusBar->Draw(pWind, currentTimer, currentGoal, currentLevel, animalList.size());
-		string budget_string = "BUDGET = $" + to_string(budget);
-		printBudget(budget_string);
+		printBudget("BUDGET = $" + to_string(budget));
 
-        // Check for clicks (Note: Non-blocking check is better for animation, 
-        // but sticking to your current structure)
-		getMouseClick(x, y);	
-
-		if (y >= 0 && y < config.toolBarHeight)
-		{
-			isExit = gameToolbar->handleClick(x, y);
-		}
-		else if (y >= config.toolBarHeight && y < 2*config.toolBarHeight)
-		{
-			isExit = gameBudgetbar->handleClick(x, y);
-		}
+        // Click Handling
+		if (pWind->GetMouseClick(x, y)) // Use non-blocking click for smooth movement
+        {
+            if (y >= 0 && y < config.toolBarHeight)
+                isExit = gameToolbar->handleClick(x, y);
+            else if (y >= config.toolBarHeight && y < 2*config.toolBarHeight)
+                isExit = gameBudgetbar->handleClick(x, y);
+        }
 
 	} while (!isExit);
 }
 
-// ... (remaining window functions) ...
+// ... Rest of Game.cpp functions remain unchanged ...
