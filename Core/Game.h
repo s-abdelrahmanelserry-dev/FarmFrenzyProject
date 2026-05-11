@@ -3,6 +3,8 @@
 #include "../UI/Toolbar.h"
 #include "../UI/BudgetBar.h"
 #include "../UI/StatusBar.h" // Include the new header
+#include <vector>
+#include "../Entities/Animal.h"
 
 class Game
 {
@@ -10,8 +12,8 @@ private:
 	window* pWind;
 	Toolbar* gameToolbar;
 	Budgetbar* gameBudgetbar;
-    StatusBar* pStatusBar; // Pointer for the status bar object
-
+    StatusBar* pStatusBar; // Pointer for the status bar object  
+    std::vector<Animal*> animalList;
     // Game state variables for Task 1
     int currentTimer;
     int currentGoal;
