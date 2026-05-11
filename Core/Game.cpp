@@ -7,10 +7,10 @@ Game::Game()
 	// 1 - Create the main window
 	pWind = CreateWind(config.windWidth, config.windHeight, config.wx, config.wy);
 
-	// 2 - Task 1: Create the Status Bar object
+	// 2 - Task 1: Initialize the Status Bar object
 	pStatusBar = new StatusBar();
 
-	// 3 - Initialize game variables (Add these to Game.h if missing)
+	// 3 - Initialize game variables with default values
 	currentTimer = 120;
 	currentGoal = 10;
 	currentLevel = 1;
@@ -22,23 +22,27 @@ Game::Game()
 
 Game::~Game()
 {
-	// Cleanup to prevent memory leaks
+	// Cleanup pointers to prevent memory leaks
 	delete pStatusBar;
+	delete gameToolbar;
+	delete gameBudgetbar;
+	delete pWind;
 }
 
-// ... (Keep your getMouseClick and other helper functions as they are) ...
+// ... [Existing getMouseClick, getSrting, etc. code] ...
 
 void Game::go()
 {
 	int x, y;
 	bool isExit = false;
 
-	pWind->ChangeTitle("- - - - - - - - - - Farm Frenzy - - - - - - - - - -");
+	pWind->ChangeTitle("- - - - - - - - - - Farm Frenzy (CIE101-project) - - - - - - - - - -");
 
 	do
 	{
-		// --- TASK 1: UPDATE THE STATUS BAR EVERY FRAME ---
-		// Passing window pointer and game data
+		// --- TASK 1: UPDATE THE STATUS BAR EVERY LOOP ---
+		// We pass the current state to the Draw function
+		// '0' is a placeholder for the animal count until animal logic is added
 		pStatusBar->Draw(pWind, currentTimer, currentGoal, currentLevel, 0); 
 
 		string budget_string = "BUDGET = $" + to_string(budget);
