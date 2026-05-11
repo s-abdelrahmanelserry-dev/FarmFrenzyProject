@@ -2,36 +2,37 @@
 #include "../CMUgraphicsLib/CMUgraphics.h"
 #include "../UI/Toolbar.h"
 #include "../UI/BudgetBar.h"
+#include "../UI/StatusBar.h" // Include the new header
 
 class Game
 {
 private:
-	window* pWind;	//Pointer to the CMU graphics window
+	window* pWind;
 	Toolbar* gameToolbar;
 	Budgetbar* gameBudgetbar;
-    StatusBar* pStatusBar;
+    StatusBar* pStatusBar; // Pointer for the status bar object
+
+    // Game state variables for Task 1
+    int currentTimer;
+    int currentGoal;
+    int currentLevel;
 
 public:
 	int budget = 2000;
 	Game();
 	~Game();
 
-	clicktype getMouseClick(int& x, int& y) const; //Get coordinate where user clicks and returns click type (left/right)
-	string getSrting() const;	 //Returns a string entered by the user
+	clicktype getMouseClick(int& x, int& y) const;
+	string getSrting() const;
 
-
-	window* CreateWind(int, int, int, int) const; //creates the game window
+	window* CreateWind(int, int, int, int) const;
 	void createToolbar();
 	void createBudgetbar();
 	void clearBudget() const;
 	void printBudget(string msg) const;
-	void clearStatusBar() const;	//Clears the status bar
+	void clearStatusBar() const;
 
-
-	void printMessage(string msg) const;	//Print a message on Status bar
-
-	void go() const;
-
-	window* getWind() const;		//returns a pointer to the graphics window
+	void printMessage(string msg) const;
+	void go(); // Removed 'const' so we can update game state
+	window* getWind() const;
 };
-
