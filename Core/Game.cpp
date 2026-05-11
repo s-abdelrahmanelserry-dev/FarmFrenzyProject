@@ -5,6 +5,7 @@
 // Inside your Game::Update or Game::Draw function:
 pStatusBar->Draw(pWind, currentTimer, currentGoal, currentLevel, animalList.size());
 Game::Game()
+pStatusBar = new StatusBar(); // Create the object in memory
 {
 	//1 - Create the main window
 	pWind = CreateWind(config.windWidth, config.windHeight, config.wx, config.wy);
