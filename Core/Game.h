@@ -9,6 +9,7 @@ private:
 	window* pWind;	//Pointer to the CMU graphics window
 	Toolbar* gameToolbar;
 	Budgetbar* gameBudgetbar;
+    StatusBar* pStatusBar;
 
 public:
 	int budget = 2000;
