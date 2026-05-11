@@ -1,10 +1,10 @@
 #pragma once
+#include <vector>
 #include "../CMUgraphicsLib/CMUgraphics.h"
 #include "../UI/Toolbar.h"
 #include "../UI/BudgetBar.h"
-#include "../UI/StatusBar.h" // Include the new header
-#include <vector>
-#include "../Entities/Animal.h"
+#include "../UI/StatusBar.h"
+#include "../Entities/Animal.h" // Ensure this path is correct
 
 class Game
 {
@@ -12,9 +12,12 @@ private:
 	window* pWind;
 	Toolbar* gameToolbar;
 	Budgetbar* gameBudgetbar;
-    StatusBar* pStatusBar; // Pointer for the status bar object  
+    StatusBar* pStatusBar;
+
+    // Task 15: Container for animals
     std::vector<Animal*> animalList;
-    // Game state variables for Task 1
+
+    // Game state
     int currentTimer;
     int currentGoal;
     int currentLevel;
@@ -35,6 +38,11 @@ public:
 	void clearStatusBar() const;
 
 	void printMessage(string msg) const;
-	void go(); // Removed 'const' so we can update game state
+
+	void go(); // Removed const to allow updating animal positions
+    
+    // Helper to add animals from UI clicks
+    void addAnimal(Animal* pAn) { animalList.push_back(pAn); }
+
 	window* getWind() const;
 };
