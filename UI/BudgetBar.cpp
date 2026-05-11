@@ -35,6 +35,9 @@ void ChickIcon::onClick()
 	*/
 	
 	//Chick* new_chick = new Chick(pGame, RefPoint, 30, 30, "images\\Chick.png");
+	// Inside ChickIcon::onClick() in BudgetBar.cpp
+Chick* new_chick = new Chick(pGame, RefPoint, 30, 30, "images\\Chick.png");
+pGame->addAnimal(new_chick); // Create this helper function in Game.cpp to push to animalList
 	cout << "Icon Chick Clicked" << endl;
 	if (pGame->budget > 100) {
 		pGame->budget = pGame->budget - 100;
