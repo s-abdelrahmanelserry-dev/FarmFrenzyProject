@@ -4,6 +4,7 @@
 #include "../Config/GameConfig.h"
 #include <random>
 #include <limits>
+#include "../CMUgraphicsLib/CMUgraphics.h"
 
 //Ranges for generating a random location for the animals
 const int range_min_x = 50;
@@ -12,6 +13,11 @@ const int range_min_y = (config.toolBarHeight * 2) + 50;
 const int range_max_y = config.windHeight - config.statusBarHeight - 50;
 
 //Base class for all toolbar icons 
+class StatusBar {
+public:
+    // Draws the bar background and the four required game stats: Timer, Goal, Level, and Animal Count
+    void Draw(window* pWind, int timer, int goal, int level, int animals);
+};
 class BudgetbarIcon :public Drawable
 {
 private:
