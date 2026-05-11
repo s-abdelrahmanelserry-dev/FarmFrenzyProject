@@ -33,31 +33,31 @@ Game::~Game()
 
 void Game::go()
 {
-	int x, y;
-	bool isExit = false;
+    // ... setup code ...
+    do
+    {
+        // --- TASK 15: MOVE ANIMALS ---
+        for (Animal* pAnimal : animalList) {
+            if (pAnimal != nullptr) {
+                pAnimal->moveRandomly(config.windWidth, config.windHeight, config.toolBarHeight, config.statusBarHeight);
+            }
+        }
 
-	pWind->ChangeTitle("- - - - - - - - - - Farm Frenzy (CIE101-project) - - - - - - - - - -");
+        // --- DRAWING SECTION ---
+        // 1. Clear the field (Important: Don't clear the UI bars)
+        pWind->SetBrush(config.bkGrndColor);
+        pWind->SetPen(config.bkGrndColor);
+        pWind->DrawRectangle(0, config.toolBarHeight * 2, config.windWidth, config.windHeight - config.statusBarHeight);
 
-	do
-	{
-		// --- TASK 1: UPDATE THE STATUS BAR EVERY LOOP ---
-		// We pass the current state to the Draw function
-		// '0' is a placeholder for the animal count until animal logic is added
-		pStatusBar->Draw(pWind, currentTimer, currentGoal, currentLevel, 0); 
+        // 2. Draw all animals at their new positions
+        for (Animal* pAnimal : animalList) {
+            if (pAnimal != nullptr) pAnimal->draw(); 
+        }
 
-		string budget_string = "BUDGET = $" + to_string(budget);
-		printBudget(budget_string);
+        // 3. Draw the Status Bar (Task 1)
+        pStatusBar->Draw(pWind, currentTimer, currentGoal, currentLevel, animalList.size());
 
-		getMouseClick(x, y);	
-
-		if (y >= 0 && y < config.toolBarHeight)
-		{
-			isExit = gameToolbar->handleClick(x, y);
-		}
-		else if (y >= config.toolBarHeight && y < 2 * config.toolBarHeight)
-		{
-			isExit = gameBudgetbar->handleClick(x, y);
-		}
-
-	} while (!isExit);
+        // ... click handling code ...
+        
+    } while (!isExit);
 }
