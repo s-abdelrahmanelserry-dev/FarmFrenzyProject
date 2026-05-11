@@ -1,6 +1,9 @@
 #include "Game.h"
 #include "../Config/GameConfig.h"
+#include "../UI/StatusBar.h"
 
+// Inside your Game::Update or Game::Draw function:
+pStatusBar->Draw(pWind, currentTimer, currentGoal, currentLevel, animalList.size());
 Game::Game()
 {
 	//1 - Create the main window
