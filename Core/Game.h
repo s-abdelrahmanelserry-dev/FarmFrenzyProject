@@ -4,7 +4,10 @@
 #include "../UI/Toolbar.h"
 #include "../UI/BudgetBar.h"
 #include "../UI/StatusBar.h"
-#include "../Entities/Animal.h" // Ensure this path is correct
+#include "../Entities/Animal.h" 
+
+// Forward declaration of Wolf if needed
+class Wolf; 
 
 class Game
 {
@@ -14,13 +17,14 @@ private:
 	Budgetbar* gameBudgetbar;
     StatusBar* pStatusBar;
 
-    // Task 15: Container for animals
     std::vector<Animal*> animalList;
+    std::vector<Animal*> wolfList; // Task 16: List for wolves
 
     // Game state
-    int currentTimer;
+    int currentTimer; // In seconds or frames
     int currentGoal;
     int currentLevel;
+    int wolfSpawnInterval; // How often a wolf appears
 
 public:
 	int budget = 2000;
@@ -36,13 +40,11 @@ public:
 	void clearBudget() const;
 	void printBudget(string msg) const;
 	void clearStatusBar() const;
-
 	void printMessage(string msg) const;
 
-	void go(); // Removed const to allow updating animal positions
-    
-    // Helper to add animals from UI clicks
+	void go(); 
     void addAnimal(Animal* pAn) { animalList.push_back(pAn); }
+    void spawnWolf(); // Task 16: Logic to create a random wolf
 
 	window* getWind() const;
 };
