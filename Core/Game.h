@@ -14,14 +14,17 @@ private:
 	Budgetbar* gameBudgetbar;
     StatusBar* pStatusBar;
 
-    std::vector<Animal*> animalList; // For player-owned animals
-    std::vector<Animal*> wolfList;   // Task 16: For enemy wolves
+    std::vector<Animal*> animalList;
+    std::vector<Animal*> wolfList;
 
-    // Game state variables
+    // Game state
     int currentTimer;
     int currentGoal;
     int currentLevel;
-    int wolfSpawnTimer; // Counter to track when to spawn a wolf
+    int wolfSpawnTimer;
+
+    // Task 20: Warehouse tracking
+    int warehouseCount; 
 
 public:
 	int budget = 2000;
@@ -39,9 +42,12 @@ public:
 	void clearStatusBar() const;
 	void printMessage(string msg) const;
 
-	void go(); // Task 17: Update loop for movement
+	void go(); 
     void addAnimal(Animal* pAn) { animalList.push_back(pAn); }
-    void spawnWolf(); // Task 16: Random wolf generation
+    void spawnWolf();
+
+    // Task 20: Getter for warehouse
+    int getWarehouseCount() const { return warehouseCount; }
 
 	window* getWind() const;
 };
