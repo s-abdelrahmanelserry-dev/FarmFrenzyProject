@@ -2,22 +2,27 @@
 #include "../Config/GameConfig.h"
 #include "../UI/StatusBar.h"
 #include <ctime>
-#include <fstream>  // مهمة جداً لقراءة الملفات في الـ Load
+#include <fstream>  
 #include <iostream>
+#include <algorithm> // مهم جداً من أجل std::sort لترتيب لوحة الصدارة
 
 Game::Game()
 {
-	srand(time(0)); // Seed العشوائية لحركة الحيوانات والولفز
+	srand(time(0)); 
 
 	pWind = CreateWind(config.windWidth, config.windHeight, config.wx, config.wy);
 
 	pStatusBar = new StatusBar();
-	currentTimer = 120.0f; // بداية العداد من 120 ثانية
+	currentTimer = 120.0f; 
 	currentGoal = 10;
 	currentLevel = 1;
 	warehouseCount = 0;
 	wolfSpawnTimer = 0;
 	isGameOver = false;
+	
+	// Task 38: تهيئة المتغيرات الافتراضية
+	username = "Guest";
+	leaderboardUpdated = false;
 
 	createToolbar();
 	createBudgetbar();
@@ -30,7 +35,6 @@ Game::~Game()
 	delete gameToolbar;
 	delete gameBudgetbar;
 	
-	// تنظيف الميموري من الحيوانات والولفز لمنع الـ Memory Leak
 	for (auto a : animalList) delete a;
 	for (auto w : wolfList) delete w;
 	
@@ -107,7 +111,7 @@ void Game::printBudget(string msg) const
 	clearBudget();	
 	pWind->SetPen(config.penColor, 50);
 	pWind->SetFont(24, BOLD, BY_NAME, "Arial");
-	pWind->DrawString(config.windWidth - 350, config.toolBarHeight + 10, msg);
+	pWind->DrawString(config.windWidth - 450, config.toolBarHeight + 10, msg); // تم زيادة المساحة لتعرض الإسم والميزانية بوضوح
 }
 
 void Game::clearStatusBar() const
@@ -136,7 +140,58 @@ void Game::spawnWolf()
 	printMessage("Warning: A Wolf has appeared!");
 }
 
-// Task 29: دالة الـ Load لقراءة حالة اللعبة من ملف خارجي نصي
+// Task 38: دالة تحديث السكور وحفظ وترتيب لوحة الصدارة في ملف نصي خارجي
+void Game::updateAndShowLeaderboard()
+{
+	std::vector<PlayerScore> scoreBoard;
+	std::ifstream inFile("leaderboard.txt");
+
+	// 1. قراءة البيانات المسجلة سابقاً إن وجدت
+	if (inFile.is_open()) {
+		PlayerScore temp;
+		while (inFile >> temp.name >> temp.score) {
+			scoreBoard.push_back(temp);
+		}
+		inFile.close();
+	}
+
+	// 2. حساب وتثبيت سكور اللاعب الحالي (الميزانية + بونص المنتجات غير المباعة)
+	int currentScore = budget + (warehouseCount * 30);
+	scoreBoard.push_back({ username, currentScore });
+
+	// 3. ترتيب السكور تنازلياً باستخدام الـ Lambda Function وأداة std::sort
+	std::sort(scoreBoard.begin(), scoreBoard.end(), [](const PlayerScore& a, const PlayerScore& b) {
+		return a.score > b.score;
+	});
+
+	// 4. حفظ أفضل 5 أرقام قياسية فقط لحماية حجم الملف
+	std::ofstream outFile("leaderboard.txt");
+	if (outFile.is_open()) {
+		int limit = std::min((int)scoreBoard.size(), 5);
+		for (int i = 0; i < limit; i++) {
+			outFile << scoreBoard[i].name << " " << scoreBoard[i].score << "\n";
+		}
+		outFile.close();
+	}
+
+	// 5. طباعة النتيجة النهائية وصاحب المركز الأول على الـ Status Bar
+	std::string topPlayerMsg = "Top 1: " + scoreBoard[0].name + " ($" + std::to_string(scoreBoard[0].score) + ")";
+	printMessage("GAME OVER! Your Score: " + std::to_string(currentScore) + " | " + topPlayerMsg);
+}
+
+// Task 39: Bonus Feature - دالة بيع محتويات المخزن فوراً لزيادة السيولة وشراء المزيد من الدواجن
+void Game::sellWarehouseProducts()
+{
+	if (warehouseCount > 0) {
+		int cashEarned = warehouseCount * 50; // كل منتج يمنح 50 دولار كاش
+		budget += cashEarned;
+		printMessage("Market Sale! Sold " + std::to_string(warehouseCount) + " items. Gained: $" + std::to_string(cashEarned));
+		warehouseCount = 0; // تصفير المخزن بعد إتمام البيع بنجاح
+	} else {
+		printMessage("Warehouse is empty! Produce more items first.");
+	}
+}
+
 void Game::loadGame(std::string filename)
 {
 	std::ifstream inFile(filename);
@@ -145,16 +200,13 @@ void Game::loadGame(std::string filename)
 		return;
 	}
 
-	// 1. مسح الكائنات القديمة من الـ Memory عشان ميتراكموش
 	for (auto a : animalList) delete a;
 	for (auto w : wolfList) delete w;
 	animalList.clear();
 	wolfList.clear();
 
-	// 2. قراءة متغيرات اللعبة الأساسية
 	inFile >> budget >> currentTimer >> currentLevel >> currentGoal >> warehouseCount;
 
-	// 3. قراءة عدد الحيوانات المحفوظة وبياناتها
 	int animalCount;
 	inFile >> animalCount;
 	for (int i = 0; i < animalCount; i++) {
@@ -172,7 +224,8 @@ void Game::loadGame(std::string filename)
 	}
 	
 	inFile.close();
-	isGameOver = false; // لو كنا خسرانين وعملنا لود، اللعبة هترجع تشتغل تاني
+	isGameOver = false; 
+	leaderboardUpdated = false; // إعادة السماح بتحديث الليدربورد عند انتهاء هذا الدور الجديد
 	printMessage("Game Loaded Successfully!");
 }
 
@@ -180,44 +233,54 @@ void Game::go()
 {
 	int x, y;
 	bool isExit = false;
-	clock_t lastTime = clock();
 
+	// --- Task 38: طلب إدخال اسم اللاعب فور تشغيل اللعبة وقبل بدء الـ Loop الرئيسي ---
+	printMessage("Type Username then press ENTER: ");
+	username = getSrting();
+	if (username.empty()) {
+		username = "Player1"; // اسم افتراضي لحماية البرنامج في حال ضغط اللاعب إدخال مباشر
+	}
+	printMessage("Welcome " + username + "! Farm is Ready...");
+
+	clock_t lastTime = clock();
 	pWind->ChangeTitle("- - - - - - - - - - Farm Frenzy (CIE101-project) - - - - - - - - - -");
 
 	do
 	{
-		// حساب الوقت المنقضي بين كل كادر والتاني (Delta Time)
 		clock_t currentTime = clock();
 		float deltaTime = float(currentTime - lastTime) / CLOCKS_PER_SEC;
 		lastTime = currentTime;
 
-		// --- Task 35: تحديث التايمر وفحص الـ Game Over ---
+		// تحديث التايمر وفحص الـ Game Over
 		if (!isGameOver) {
 			currentTimer -= deltaTime;
 			if (currentTimer <= 0) {
 				currentTimer = 0;
 				isGameOver = true;
-				printMessage("GAME OVER! Time is Up!");
 			}
 		}
 
-		// التحديثات والحركة بتشتغل فقط لو الجيم شغال ومش Game Over
+		// التحكم في تشغيل اللعبة وحفظ الليدربورد
 		if (!isGameOver) {
-			// تحريك وتحديث إنتاج الحيوانات
 			for (Animal* pAn : animalList) {
 				pAn->moveRandomly(config.windWidth, config.windHeight, config.toolBarHeight, config.statusBarHeight);
 				pAn->updateProduction(deltaTime);
 			}
-			// تحريك الديب
 			for (Animal* pWolf : wolfList) {
 				pWolf->moveRandomly(config.windWidth, config.windHeight, config.toolBarHeight, config.statusBarHeight);
 			}
 
-			// ظهور عشوائي للـ Wolves
 			wolfSpawnTimer++;
 			if (wolfSpawnTimer >= 800) {
 				spawnWolf();
 				wolfSpawnTimer = 0;
+			}
+		} 
+		else {
+			// عند الـ Game Over نقوم بتحديث الـ Leaderboard لمرة واحدة فقط دون تكرار
+			if (!leaderboardUpdated) {
+				updateAndShowLeaderboard();
+				leaderboardUpdated = true;
 			}
 		}
 
@@ -226,7 +289,6 @@ void Game::go()
 		pWind->SetPen(config.bkGrndColor);
 		pWind->DrawRectangle(0, 2 * config.toolBarHeight, config.windWidth, config.windHeight - config.statusBarHeight);
 
-		// رسم المزرعة والإنتاج
 		for (Animal* pAn : animalList) {
 			pAn->draw();
 			if (pAn->getHasProduct()) {
@@ -237,9 +299,10 @@ void Game::go()
 		}
 		for (Animal* pWolf : wolfList) pWolf->draw();
 
-		// رسم شاشات العرض والبيانات
 		pStatusBar->Draw(pWind, (int)currentTimer, currentGoal, currentLevel, animalList.size());
-		string budget_string = "BUDGET = $" + to_string(budget) + " | WH: " + to_string(warehouseCount);
+		
+		// إدراج اسم اللاعب النشط حالياً في لوحة الميزانية العلوية
+		string budget_string = "PLAYER: " + username + " | BUDGET = $" + to_string(budget) + " | WH: " + to_string(warehouseCount);
 		printBudget(budget_string);
 
 		// الـ Input منغير تعطيل حركة الشاشة (Non-blocking input)
@@ -255,6 +318,8 @@ void Game::go()
 			}
 			else if (!isGameOver) 
 			{
+				bool productClicked = false;
+				
 				// تجميع المنتجات بالضغط عليها
 				for (Animal* pAn : animalList) {
 					if (pAn->getHasProduct()) {
@@ -264,8 +329,16 @@ void Game::go()
 							pAn->collectProduct();
 							warehouseCount++;
 							printMessage("Collected! Added to Warehouse.");
+							productClicked = true;
+							break;
 						}
 					}
+				}
+
+				// Task 39: الميزة المبتكرة (Smart Gestures Interface)
+				// إذا نقر اللاعب داخل المزرعة ولم يكن يضغط على منتج، يتم استدعاء دالة البيع الفوري تلقائياً لتسهيل اللعب وتحويل المخزن لسيولة نقدية لشراء حيوانات جديدة
+				if (!productClicked) {
+					sellWarehouseProducts();
 				}
 			}
 		}
