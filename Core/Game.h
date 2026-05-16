@@ -7,7 +7,7 @@
 #include <vector>
 #include <string>
 
-// هيكل بيانات لتخزين أسماء اللاعبين وسكوراتهم
+// هيكل بيانات لتخزين أسماء اللاعبين وسكوراتهم لترتيبها
 struct PlayerScore {
     std::string name;
     int score;
@@ -16,7 +16,7 @@ struct PlayerScore {
 class Game
 {
 private:
-    window* pWind;
+    window* pWind; 
     Toolbar* gameToolbar;
     Budgetbar* gameBudgetbar;
     StatusBar* pStatusBar;
@@ -31,8 +31,9 @@ private:
     int wolfSpawnTimer;
     bool isGameOver;
 
-    // Task 38: متغيرات اسم المستخدم ولوحة الصدارة
+    // Task 38: متغيرات نظام لوحة الصدارة واسم المستخدم
     std::string username;
+    bool leaderboardUpdated; // لضمان كتابة السكور مرة واحدة فقط عند انتهاء الوقت
     void updateAndShowLeaderboard();
 
 public:
@@ -55,7 +56,7 @@ public:
     void addAnimal(Animal* pAn) { animalList.push_back(pAn); }
     int getWarehouseCount() const { return warehouseCount; }
     
-    // Task 39: ميزة إضافية - بيع المنتجات لزيادة الميزانية (Cash Out Bonus)
+    // Task 39: ميزة إضافية (تحويل منتجات المخزن لكاش نقدى عند الضغط على أرض المزرعة)
     void sellWarehouseProducts();
 
     void loadGame(std::string filename);
