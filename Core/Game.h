@@ -10,6 +10,7 @@
 class Game
 {
 private:
+    std::vector<int> wolfClicks; // تتبع عدد الضربات لكل ذئب على حدة
 	window* pWind;	// Pointer to the CMU graphics window
 	Toolbar* gameToolbar;
 	Budgetbar* gameBudgetbar;
