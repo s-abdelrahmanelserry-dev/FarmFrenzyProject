@@ -4,7 +4,6 @@
 #include <ctime>
 #include <fstream>  
 #include <iostream>
-#include <algorithm> // مهم جداً من أجل std::sort لترتيب لوحة الصدارة
 
 Game::Game()
 {
@@ -19,10 +18,6 @@ Game::Game()
 	warehouseCount = 0;
 	wolfSpawnTimer = 0;
 	isGameOver = false;
-	
-	// Task 38: تهيئة المتغيرات الافتراضية
-	username = "Guest";
-	leaderboardUpdated = false;
 
 	createToolbar();
 	createBudgetbar();
@@ -111,7 +106,7 @@ void Game::printBudget(string msg) const
 	clearBudget();	
 	pWind->SetPen(config.penColor, 50);
 	pWind->SetFont(24, BOLD, BY_NAME, "Arial");
-	pWind->DrawString(config.windWidth - 450, config.toolBarHeight + 10, msg); // تم زيادة المساحة لتعرض الإسم والميزانية بوضوح
+	pWind->DrawString(config.windWidth - 350, config.toolBarHeight + 10, msg);
 }
 
 void Game::clearStatusBar() const
@@ -137,59 +132,8 @@ void Game::spawnWolf()
 
 	Animal* pWolf = new Animal(this, p, 60, 60, "images\\Wolf.png");
 	wolfList.push_back(pWolf);
+	wolfClicks.push_back(0); // تهيئة عدد ضربات الذئب الجديد بـ 0
 	printMessage("Warning: A Wolf has appeared!");
-}
-
-// Task 38: دالة تحديث السكور وحفظ وترتيب لوحة الصدارة في ملف نصي خارجي
-void Game::updateAndShowLeaderboard()
-{
-	std::vector<PlayerScore> scoreBoard;
-	std::ifstream inFile("leaderboard.txt");
-
-	// 1. قراءة البيانات المسجلة سابقاً إن وجدت
-	if (inFile.is_open()) {
-		PlayerScore temp;
-		while (inFile >> temp.name >> temp.score) {
-			scoreBoard.push_back(temp);
-		}
-		inFile.close();
-	}
-
-	// 2. حساب وتثبيت سكور اللاعب الحالي (الميزانية + بونص المنتجات غير المباعة)
-	int currentScore = budget + (warehouseCount * 30);
-	scoreBoard.push_back({ username, currentScore });
-
-	// 3. ترتيب السكور تنازلياً باستخدام الـ Lambda Function وأداة std::sort
-	std::sort(scoreBoard.begin(), scoreBoard.end(), [](const PlayerScore& a, const PlayerScore& b) {
-		return a.score > b.score;
-	});
-
-	// 4. حفظ أفضل 5 أرقام قياسية فقط لحماية حجم الملف
-	std::ofstream outFile("leaderboard.txt");
-	if (outFile.is_open()) {
-		int limit = std::min((int)scoreBoard.size(), 5);
-		for (int i = 0; i < limit; i++) {
-			outFile << scoreBoard[i].name << " " << scoreBoard[i].score << "\n";
-		}
-		outFile.close();
-	}
-
-	// 5. طباعة النتيجة النهائية وصاحب المركز الأول على الـ Status Bar
-	std::string topPlayerMsg = "Top 1: " + scoreBoard[0].name + " ($" + std::to_string(scoreBoard[0].score) + ")";
-	printMessage("GAME OVER! Your Score: " + std::to_string(currentScore) + " | " + topPlayerMsg);
-}
-
-// Task 39: Bonus Feature - دالة بيع محتويات المخزن فوراً لزيادة السيولة وشراء المزيد من الدواجن
-void Game::sellWarehouseProducts()
-{
-	if (warehouseCount > 0) {
-		int cashEarned = warehouseCount * 50; // كل منتج يمنح 50 دولار كاش
-		budget += cashEarned;
-		printMessage("Market Sale! Sold " + std::to_string(warehouseCount) + " items. Gained: $" + std::to_string(cashEarned));
-		warehouseCount = 0; // تصفير المخزن بعد إتمام البيع بنجاح
-	} else {
-		printMessage("Warehouse is empty! Produce more items first.");
-	}
 }
 
 void Game::loadGame(std::string filename)
@@ -204,6 +148,7 @@ void Game::loadGame(std::string filename)
 	for (auto w : wolfList) delete w;
 	animalList.clear();
 	wolfList.clear();
+	wolfClicks.clear(); // مسح العدادات القديمة عند تحميل اللعبة
 
 	inFile >> budget >> currentTimer >> currentLevel >> currentGoal >> warehouseCount;
 
@@ -225,7 +170,6 @@ void Game::loadGame(std::string filename)
 	
 	inFile.close();
 	isGameOver = false; 
-	leaderboardUpdated = false; // إعادة السماح بتحديث الليدربورد عند انتهاء هذا الدور الجديد
 	printMessage("Game Loaded Successfully!");
 }
 
@@ -233,16 +177,8 @@ void Game::go()
 {
 	int x, y;
 	bool isExit = false;
-
-	// --- Task 38: طلب إدخال اسم اللاعب فور تشغيل اللعبة وقبل بدء الـ Loop الرئيسي ---
-	printMessage("Type Username then press ENTER: ");
-	username = getSrting();
-	if (username.empty()) {
-		username = "Player1"; // اسم افتراضي لحماية البرنامج في حال ضغط اللاعب إدخال مباشر
-	}
-	printMessage("Welcome " + username + "! Farm is Ready...");
-
 	clock_t lastTime = clock();
+
 	pWind->ChangeTitle("- - - - - - - - - - Farm Frenzy (CIE101-project) - - - - - - - - - -");
 
 	do
@@ -251,16 +187,15 @@ void Game::go()
 		float deltaTime = float(currentTime - lastTime) / CLOCKS_PER_SEC;
 		lastTime = currentTime;
 
-		// تحديث التايمر وفحص الـ Game Over
 		if (!isGameOver) {
 			currentTimer -= deltaTime;
 			if (currentTimer <= 0) {
 				currentTimer = 0;
 				isGameOver = true;
+				printMessage("GAME OVER! Time is Up!");
 			}
 		}
 
-		// التحكم في تشغيل اللعبة وحفظ الليدربورد
 		if (!isGameOver) {
 			for (Animal* pAn : animalList) {
 				pAn->moveRandomly(config.windWidth, config.windHeight, config.toolBarHeight, config.statusBarHeight);
@@ -270,17 +205,33 @@ void Game::go()
 				pWolf->moveRandomly(config.windWidth, config.windHeight, config.toolBarHeight, config.statusBarHeight);
 			}
 
+			// --- Task 32: فحص اصطدام الذئاب مع حيوانات المزرعة وفنائها عند التداخل ---
+			for (size_t wIdx = 0; wIdx < wolfList.size(); wIdx++) {
+				Animal* w = wolfList[wIdx];
+				
+				for (auto animIt = animalList.begin(); animIt != animalList.end(); ) {
+					Animal* a = *animIt;
+					
+					// آلية فحص تداخل المربعات (AABB Collision Detection)
+					if (w->getRefPoint().x < a->getRefPoint().x + a->getWidth() &&
+						w->getRefPoint().x + w->getWidth() > a->getRefPoint().x &&
+						w->getRefPoint().y < a->getRefPoint().y + a->getHeight() &&
+						w->getRefPoint().y + w->getHeight() > a->getRefPoint().y) {
+						
+						// حدث اصطدام! الحيوان يختفي ويموت
+						delete a;
+						animIt = animalList.erase(animIt); // حذفه من القائمة بأمان
+						printMessage("Oh no! A wolf attacked and killed an animal!");
+					} else {
+						++animIt;
+					}
+				}
+			}
+
 			wolfSpawnTimer++;
 			if (wolfSpawnTimer >= 800) {
 				spawnWolf();
 				wolfSpawnTimer = 0;
-			}
-		} 
-		else {
-			// عند الـ Game Over نقوم بتحديث الـ Leaderboard لمرة واحدة فقط دون تكرار
-			if (!leaderboardUpdated) {
-				updateAndShowLeaderboard();
-				leaderboardUpdated = true;
 			}
 		}
 
@@ -300,9 +251,7 @@ void Game::go()
 		for (Animal* pWolf : wolfList) pWolf->draw();
 
 		pStatusBar->Draw(pWind, (int)currentTimer, currentGoal, currentLevel, animalList.size());
-		
-		// إدراج اسم اللاعب النشط حالياً في لوحة الميزانية العلوية
-		string budget_string = "PLAYER: " + username + " | BUDGET = $" + to_string(budget) + " | WH: " + to_string(warehouseCount);
+		string budget_string = "BUDGET = $" + to_string(budget) + " | WH: " + to_string(warehouseCount);
 		printBudget(budget_string);
 
 		// الـ Input منغير تعطيل حركة الشاشة (Non-blocking input)
@@ -318,27 +267,42 @@ void Game::go()
 			}
 			else if (!isGameOver) 
 			{
-				bool productClicked = false;
-				
-				// تجميع المنتجات بالضغط عليها
-				for (Animal* pAn : animalList) {
-					if (pAn->getHasProduct()) {
-						if (x >= pAn->getRefPoint().x && x <= pAn->getRefPoint().x + pAn->getWidth() &&
-							y >= pAn->getRefPoint().y && y <= pAn->getRefPoint().y + pAn->getHeight()) {
-							
-							pAn->collectProduct();
-							warehouseCount++;
-							printMessage("Collected! Added to Warehouse.");
-							productClicked = true;
-							break;
+				bool wolfClicked = false;
+
+				// --- Task 33: فحص ما إذا كان المستخدم يضغط على الذئب لمحاربته ---
+				for (size_t i = 0; i < wolfList.size(); i++) {
+					Animal* pWolf = wolfList[i];
+					if (x >= pWolf->getRefPoint().x && x <= pWolf->getRefPoint().x + pWolf->getWidth() &&
+						y >= pWolf->getRefPoint().y && y <= pWolf->getRefPoint().y + pWolf->getHeight()) {
+						
+						wolfClicks[i]++; // زيادة عداد النقرات للذئب المحدد
+						printMessage("Wolf Hit! Clicks: " + to_string(wolfClicks[i]) + "/5");
+						wolfClicked = true;
+
+						// إذا تم نقره 5 مرات متتالية يختفي ويُهزم
+						if (wolfClicks[i] >= 5) {
+							printMessage("Great Job! The wolf has been defeated!");
+							delete pWolf;
+							wolfList.erase(wolfList.begin() + i);
+							wolfClicks.erase(wolfClicks.begin() + i);
 						}
+						break; // الخروج لمعالجة نقرة واحدة في الإطار الحالي
 					}
 				}
 
-				// Task 39: الميزة المبتكرة (Smart Gestures Interface)
-				// إذا نقر اللاعب داخل المزرعة ولم يكن يضغط على منتج، يتم استدعاء دالة البيع الفوري تلقائياً لتسهيل اللعب وتحويل المخزن لسيولة نقدية لشراء حيوانات جديدة
-				if (!productClicked) {
-					sellWarehouseProducts();
+				// إذا لم يضغط اللاعب على ذئب، نقوم بفحص التقاط المنتجات العادية
+				if (!wolfClicked) {
+					for (Animal* pAn : animalList) {
+						if (pAn->getHasProduct()) {
+							if (x >= pAn->getRefPoint().x && x <= pAn->getRefPoint().x + pAn->getWidth() &&
+								y >= pAn->getRefPoint().y && y <= pAn->getRefPoint().y + pAn->getHeight()) {
+								
+								pAn->collectProduct();
+								warehouseCount++;
+								printMessage("Collected! Added to Warehouse.");
+							}
+						}
+					}
 				}
 			}
 		}
