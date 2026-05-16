@@ -2,6 +2,8 @@
 #include "../Config/GameConfig.h"
 #include "../Core/Game.h"
 
+pGame->loadGame("savefile.txt");
+
 ToolbarIcon::ToolbarIcon(Game* r_pGame, point r_point, int r_width, int r_height, string img_path) : Drawable(r_pGame, r_point, r_width, r_height)
 {
 	image_path = img_path;
@@ -82,6 +84,5 @@ bool Toolbar::handleClick(int x, int y)
 	if (clickedIconIndex == ICON_EXIT) return true;
 
 	return false;
-
 }
 
