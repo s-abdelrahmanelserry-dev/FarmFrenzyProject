@@ -1,25 +1,28 @@
-#pragma once
+#pragma once 
 #include "Drawable.h"
+
 class GameObject : public Drawable
 {
 protected:
-	color fillColor;	//game object fill color
-	color borderColor;	//game object border color
+	color fillColor;	// game object fill color
+	color borderColor;	// game object border color [cite: 5]
 
 public:
 	GameObject(Game* r_pGame, point ref, int r_width, int r_height, color fc, color bc);
-	virtual void draw() const = 0; //for a game object to draw itself on the screen
+	
+	virtual void draw() const = 0; // for a game object to draw itself on the screen [cite: 6]
 	void setRefPoint(point p);
-	bool CollisionDetection(const GameObject& gObj);
+	
+	// Checks for Axis-Aligned Bounding Box (AABB) collision with another game object
+	bool CollisionDetection(const GameObject& gObj); [cite: 7]
 
 	//-- The following functions should be supported by the shape class
 	//-- It should be overridden by each inherited shape
 	//-- Decide the parameters that you should pass to each function	
 
-	//virtual void move() = 0;		//Move the game object
-	//virtual void save(ofstream &OutFile) = 0;	//Save the shape parameters to the file
-	//virtual void load(ifstream &Infile) = 0;	//Load the shape parameters to the file
-	//virtual void collisionAction() = 0;    //action that should be performed upon collision
+	//virtual void move() = 0;		// Move the game object [cite: 8]
+	//virtual void save(ofstream &OutFile) = 0;	// Save the shape parameters to the file
+	//virtual void load(ifstream &Infile) = 0;	// Load the shape parameters to the file [cite: 9]
+	//virtual void collisionAction() = 0;    // action that should be performed upon collision
 
 };
-
