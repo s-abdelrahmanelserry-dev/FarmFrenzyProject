@@ -2,6 +2,9 @@
 #include "../Config/GameConfig.h"
 #include "../UI/StatusBar.h"
 #include "../Entities/Animal.h"
+#include "../Entities/Chick.h" 
+#include "../Entities/Cow.h"   
+#include "../Entities/Wolf.h"  
 #include <ctime>
 #include <fstream>  
 #include <iostream>
@@ -10,7 +13,7 @@
 
 using namespace std;
 
-// Helper functions for field boundaries from file 2
+// Helper functions for field boundaries
 static int WPX() { return config.windWidth - config.warehousePanelWidth; }
 static int FL() { return config.fieldMargin; }
 static int FR() { return config.windWidth - config.warehousePanelWidth - config.fieldMargin; }
@@ -21,7 +24,7 @@ Game::Game()
 {
 	srand(time(0)); 
 
-	// Set current working directory to executable path (from file 2)
+	// Set current working directory to executable path
 	char exePath[MAX_PATH];
 	GetModuleFileNameA(NULL, exePath, MAX_PATH);
 	string exeDir(exePath);
@@ -30,13 +33,12 @@ Game::Game()
 
 	// Initialize window
 	pWind = CreateWind(config.windWidth, config.windHeight, config.wx, config.wy);
-
 	pStatusBar = new StatusBar();
 	
 	// Game state variables initialization
 	currentTimer = 120.0f; 
 	timer = 120;
-	currentGoal = 10;
+	currentGoal = 5000;
 	currentLevel = 1;
 	level = 1;
 	budget = 2000;
@@ -50,11 +52,9 @@ Game::Game()
 	isGameOver = false;
 	paused = false;
 
-	// Clear array pointers if arrays are used as fallback
-	for (int i = 0; i < MAX_ANIMALS;  i++) animalListArray[i] = nullptr;
-	for (int i = 0; i < MAX_WOLVES;   i++) wolfListArray[i]   = nullptr;
-	for (int i = 0; i < MAX_PRODUCTS; i++) eggList[i]    = nullptr;
-	for (int i = 0; i < MAX_PRODUCTS; i++) milkList[i]   = nullptr;
+	// Clear legacy arrays used as fallback 
+	for (int i = 0; i < MAX_PRODUCTS; i++) eggList[i]  = nullptr;
+	for (int i = 0; i < MAX_PRODUCTS; i++) milkList[i] = nullptr;
 	animalCount = 0;
 	wolfCount = 0;
 	eggFieldCount = 0;
@@ -82,8 +82,6 @@ Game::~Game()
 	for (auto w : wolfList) delete w;
 	
 	// Clean up array containers
-	for (int i = 0; i < animalCount;    i++) delete animalListArray[i];
-	for (int i = 0; i < wolfCount;      i++) delete wolfListArray[i];
 	for (int i = 0; i < eggFieldCount;  i++) delete eggList[i];
 	for (int i = 0; i < milkFieldCount; i++) delete milkList[i];
 
@@ -225,89 +223,116 @@ void Game::printMessage(string msg) const
 	pWind->DrawString(10, config.windHeight - (int)(0.85 * config.statusBarHeight), msg);
 }
 
+void Game::drawStatusBar() const
+{
+	clearStatusBar();
+	int y = config.windHeight - (int)(0.75 * config.statusBarHeight);
+	pWind->SetPen(WHITE, 1);
+	pWind->SetFont(16, BOLD, BY_NAME, "Arial");
+	pWind->DrawString(10,  y, "Time: "    + to_string(timer));
+	pWind->DrawString(130, y, "Level: "   + to_string(level));
+	pWind->DrawString(240, y, "Goal: $" + to_string(currentGoal));
+	pWind->DrawString(430, y, "Animals: " + to_string(animalList.size()));
+}
+
 void Game::spawnWolf()
 {
-	// Setup vector-based wolf spawning within valid sandbox bounds
 	point p;
-	p.x = FL() + rand() % (FR() - FL() - 60);
-	p.y = FT() + rand() % (FB() - FT() - 60);
+	p.x = FL() + rand() % (FR() - FL() - config.wolfWidth);
+	p.y = FT() + rand() % (FB() - FT() - config.wolfHeight);
 
-	Animal* pWolf = new Animal(this, p, 60, 60, "images\\Wolf.png");
+	Animal* pWolf = new Wolf(this, p, config.wolfWidth, config.wolfHeight, "images\\wolf.jpg");
 	wolfList.push_back(pWolf);
 	wolfClicks.push_back(0); 
-	
-	// Synchronize array metrics if array configuration tracking is active
-	if (wolfCount < MAX_WOLVES) {
-		wolfListArray[wolfCount] = pWolf;
-		wolfCount++;
-	}
 
 	printMessage("Warning: A Wolf has appeared!");
 }
 
-void Game::loadGame(std::string filename)
-{
-	std::ifstream inFile(filename);
-	if (!inFile) {
-		printMessage("Error: Saved file not found!");
-		return;
-	}
-
-	for (auto a : animalList) delete a;
-	for (auto w : wolfList) delete w;
-	animalList.clear();
-	wolfList.clear();
-	wolfClicks.clear(); 
-
-	inFile >> budget >> currentTimer >> currentLevel >> currentGoal >> warehouseCount;
-	timer = (int)currentTimer;
-	level = currentLevel;
-
-	int animalCountVal;
-	inFile >> animalCountVal;
-	for (int i = 0; i < animalCountVal; i++) {
-		int x, y;
-		std::string type;
-		inFile >> type >> x >> y;
-		
-		point p;
-		p.x = x;
-		p.y = y;
-		
-		if (type == "Chick" || type == "CHICK") {
-			animalList.push_back(new Animal(this, p, 50, 50, "images\\chick.jpg"));
-			chickCount++;
-		}
-	}
-	
-	inFile.close();
-	isGameOver = false; 
-	drawBackground();
-	drawWarehousePanel();
-	printMessage("Game Loaded Successfully!");
-}
-
 void Game::loadGame()
 {
-	loadGame(config.saveFileName);
+	ifstream f(config.saveFileName);
+	if (!f.is_open()) { printMessage("ERROR: No save file found!"); return; }
+	
+	restartGame();
+	string token;
+	
+	while (f >> token)
+	{
+		if (token == "LEVEL")  { 
+			f >> level; 
+			currentLevel = level;
+		}
+		else if (token == "BUDGET") { f >> budget; }
+		else if (token == "TIMER")  { 
+			f >> timer; 
+			currentTimer = (float)timer;
+		}
+		else if (token == "ANIMALS")
+		{
+			int n; f >> n;
+			for (int i = 0; i < n; i++)
+			{
+				string type; int px, py; 
+				f >> type >> px >> py;
+				point p; p.x = px; p.y = py;
+				if (type == "CHICK") { 
+					animalList.push_back(new Chick(this, p, config.animalWidth, config.animalHeight, "images\\chick.jpg")); 
+					chickCount++;
+				}
+				else { 
+					animalList.push_back(new Cow(this, p, config.animalWidth, config.animalHeight, "images\\cow.jpg"));
+					cowCount++;   
+				}
+			}
+		}
+		else if (token == "WOLVES")
+		{
+			int n; f >> n;
+			for (int i = 0; i < n; i++)
+			{
+				string lbl; int px, py;
+				f >> lbl >> px >> py;
+				point p; p.x = px; p.y = py;
+				wolfList.push_back(new Wolf(this, p, config.wolfWidth, config.wolfHeight, "images\\wolf.jpg"));
+				wolfClicks.push_back(0);
+			}
+		}
+		else if (token == "EGGS") { f >> warehouseEggs; }
+		else if (token == "MILK") { f >> warehouseMilk; }
+	}
+	f.close();
+	
+	drawBackground(); 
+	drawWarehousePanel();
+	clearBudget(); 
+	printBudget("BUDGET = $" + to_string(budget));
+	updateFoodCounter(); 
+	drawStatusBar();
+	printMessage("Game Loaded!");
 }
 
 void Game::saveGame() const
 {
 	ofstream f(config.saveFileName);
 	if (!f.is_open()) { printMessage("ERROR: Could not save!"); return; }
-	f << "LEVEL "  << level  << "\n" << "BUDGET " << budget << "\n" << "TIMER " << currentTimer << "\n";
+	
+	f << "LEVEL "  << level  << "\n" << "BUDGET " << budget << "\n" << "TIMER " << timer << "\n";
+	
 	f << "ANIMALS " << animalList.size() << "\n";
 	for (size_t i = 0; i < animalList.size(); i++)
 	{
 		if (!animalList[i]) continue;
-		f << "CHICK " << animalList[i]->getRefPoint().x << " " << animalList[i]->getRefPoint().y << "\n";
+		Chick* ch = dynamic_cast<Chick*>(animalList[i]);
+		f << (ch ? "CHICK" : "COW") << " " << animalList[i]->getRefPoint().x << " " << animalList[i]->getRefPoint().y << "\n";
 	}
+	
 	f << "WOLVES " << wolfList.size() << "\n";
-	for (size_t i = 0; i < wolfList.size(); i++) {
+	for (size_t i = 0; i < wolfList.size(); i++) 
+	{
 		if (wolfList[i])
 			f << "WOLF " << wolfList[i]->getRefPoint().x << " " << wolfList[i]->getRefPoint().y << "\n";
 	}
+	
 	f << "WAREHOUSE\n" << "EGGS " << warehouseEggs << "\n" << "MILK " << warehouseMilk << "\n";
 	f.close();
 	printMessage("Game Saved!");
@@ -321,8 +346,6 @@ void Game::restartGame()
 	wolfList.clear();
 	wolfClicks.clear();
 
-	for (int i = 0; i < animalCount;    i++) { delete animalListArray[i]; animalListArray[i] = nullptr; }
-	for (int i = 0; i < wolfCount;      i++) { delete wolfListArray[i]; wolfListArray[i] = nullptr; }
 	for (int i = 0; i < eggFieldCount;  i++) { delete eggList[i]; eggList[i] = nullptr; }
 	for (int i = 0; i < milkFieldCount; i++) { delete milkList[i]; milkList[i] = nullptr; }
 	
@@ -343,6 +366,7 @@ void Game::restartGame()
 	clearBudget();
 	printBudget("BUDGET = $" + to_string(budget));
 	updateFoodCounter();
+	drawStatusBar();
 	printMessage("Game Restarted!");
 }
 
@@ -353,6 +377,7 @@ void Game::go()
 	clock_t lastTime = clock();
 
 	pWind->ChangeTitle("- - - - - - - - - - Farm Frenzy (CIE101-project) - - - - - - - - - -");
+	spawnWolf();
 
 	do
 	{
@@ -372,7 +397,6 @@ void Game::go()
 		}
 
 		if (!isGameOver && !paused) {
-			// Update core movement boundaries restricted inside the playing field matrix
 			for (Animal* pAn : animalList) {
 				pAn->moveRandomly(WPX(), config.windHeight, config.toolBarHeight, config.statusBarHeight);
 				pAn->updateProduction(deltaTime);
@@ -381,7 +405,7 @@ void Game::go()
 				pWolf->moveRandomly(WPX(), config.windHeight, config.toolBarHeight, config.statusBarHeight);
 			}
 
-			// Task 32: AABB Collision Detection and response mechanics
+			// AABB Collision Detection and response mechanics (Wolf eating animals)
 			for (size_t wIdx = 0; wIdx < wolfList.size(); wIdx++) {
 				Animal* w = wolfList[wIdx];
 				
@@ -409,8 +433,7 @@ void Game::go()
 			}
 		}
 
-		// --- Render Pipeline ---
-		// Redraw background boundaries securely bypassing the fixed panel
+		// Render Pipeline 
 		pWind->SetBrush(config.bkGrndColor);
 		pWind->SetPen(config.bkGrndColor);
 		pWind->DrawRectangle(0, 2 * config.toolBarHeight, WPX(), config.windHeight - config.statusBarHeight);
@@ -428,12 +451,12 @@ void Game::go()
 			}
 		}
 		
-		// Render array-based separate dropped components if present
 		for (int i = 0; i < eggFieldCount; i++) {
 			if (eggList[i] && !eggList[i]->collected) {
 				pWind->DrawImage("images\\egg.png", eggList[i]->getRefPoint().x, eggList[i]->getRefPoint().y, config.productWidth, config.productHeight);
 			}
 		}
+		
 		for (int i = 0; i < milkFieldCount; i++) {
 			if (milkList[i] && !milkList[i]->collected) {
 				pWind->DrawImage("images\\milk.png", milkList[i]->getRefPoint().x, milkList[i]->getRefPoint().y, config.productWidth, config.productHeight);
@@ -442,7 +465,7 @@ void Game::go()
 
 		for (Animal* pWolf : wolfList) pWolf->draw();
 
-		pStatusBar->Draw(pWind, (int)currentTimer, currentGoal, currentLevel, animalList.size());
+		drawStatusBar();
 		string budget_string = "BUDGET = $" + to_string(budget) + " | WH: " + to_string(warehouseCount);
 		printBudget(budget_string);
 
@@ -459,18 +482,17 @@ void Game::go()
 			}
 			else if (x >= WPX())
 			{
-				// Check click inside warehouse activation panels
 				showWarehouse();
 			}
 			else if (!isGameOver) 
 			{
 				bool targetInteracted = false;
 
-				// Task 33: Intercept wolf targeting system mechanics
+				// Wolf targeting mechanics
 				for (size_t i = 0; i < wolfList.size(); i++) {
 					Animal* pWolf = wolfList[i];
-					if (x >= pWolf->getRefPoint().x && x <= pWolf->getRefPoint().x + pWolf->getWidth() &&
-						y >= pWolf->getRefPoint().y && y <= pWolf->getRefPoint().y + pWolf->getHeight()) {
+					if (x >= pWolf->getRefPoint().x && x <= pWolf->getRefPoint().x + config.wolfWidth &&
+						y >= pWolf->getRefPoint().y && y <= pWolf->getRefPoint().y + config.wolfHeight) {
 						
 						wolfClicks[i]++; 
 						printMessage("Wolf Hit! Clicks: " + to_string(wolfClicks[i]) + "/5");
@@ -486,7 +508,7 @@ void Game::go()
 					}
 				}
 
-				// Drop tracking fallback interception for egg field collection
+				// Field drop collection handling (Eggs)
 				if (!targetInteracted) {
 					for (int i = 0; i < eggFieldCount; i++) {
 						if (eggList[i] && !eggList[i]->collected) {
@@ -504,7 +526,7 @@ void Game::go()
 					}
 				}
 
-				// Drop tracking fallback interception for milk field collection
+				// Field drop collection handling (Milk)
 				if (!targetInteracted) {
 					for (int i = 0; i < milkFieldCount; i++) {
 						if (milkList[i] && !milkList[i]->collected) {
@@ -522,16 +544,19 @@ void Game::go()
 					}
 				}
 
-				// Fallback collection directly from individual active entities
+				// Fallback generic collection 
 				if (!targetInteracted) {
 					for (Animal* pAn : animalList) {
 						if (pAn->getHasProduct()) {
-							if (x >= pAn->getRefPoint().x && x <= pAn->getRefPoint().x + pAn->getWidth() &&
-								y >= pAn->getRefPoint().y && y <= pAn->getRefPoint().y + pAn->getHeight()) {
+							if (x >= pAn->getRefPoint().x && x <= pAn->getRefPoint().x + config.animalWidth &&
+								y >= pAn->getRefPoint().y && y <= pAn->getRefPoint().y + config.animalHeight) {
 								
 								pAn->collectProduct();
 								warehouseCount++;
-								warehouseEggs++; // Increment basic resource metrics synchronously
+								
+								if (dynamic_cast<Chick*>(pAn)) warehouseEggs++;
+								else if (dynamic_cast<Cow*>(pAn)) warehouseMilk++;
+
 								printMessage("Collected! Added to Warehouse.");
 							}
 						}
@@ -695,7 +720,7 @@ void Game::showWarehouse()
 			{
 				budget += warehouseEggs * config.eggPrice;
 				warehouseEggs = 0;
-				warehouseCount = warehouseMilk; // Synchronize absolute counters
+				warehouseCount -= warehouseEggs; 
 				redraw();
 				drawWarehousePanel();
 				clearBudget();
@@ -710,7 +735,7 @@ void Game::showWarehouse()
 			{
 				budget += warehouseMilk * config.milkPrice;
 				warehouseMilk = 0;
-				warehouseCount = warehouseEggs; // Synchronize absolute counters
+				warehouseCount -= warehouseMilk;
 				redraw();
 				drawWarehousePanel();
 				clearBudget();
@@ -727,17 +752,6 @@ void Game::showWarehouse()
 	delete whWind;
 }
 
-void Game::drawStatusBar() const
-{
-	clearStatusBar();
-	int y = config.windHeight - (int)(0.75 * config.statusBarHeight);
-	pWind->SetPen(WHITE, 1);
-	pWind->SetFont(16, BOLD, BY_NAME, "Arial");
-	pWind->DrawString(10,  y, "Time: "    + to_string(timer));
-	pWind->DrawString(130, y, "Level: "   + to_string(level));
-	pWind->DrawString(240, y, "Goal: $" + to_string(currentGoal));
-	pWind->DrawString(430, y, "Animals: " + to_string(animalList.size()));
-}
 
 void Game::playBackgroundMusic() const
 {
